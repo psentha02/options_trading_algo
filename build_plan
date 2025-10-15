@@ -1,0 +1,170 @@
+# Options Trading Model with Technical Analysis
+
+## Architecture Overview
+
+We'll build a modular command-line Python application with clear separation of concerns:
+
+1. **Data Layer**: Polygon.io API integration for stock aggregates and options contracts
+2. **Analysis Engine**: Technical indicator calculation and signal generation
+3. **Strategy Engine**: Options contract selection and recommendation logic
+4. **CLI Interface**: User-friendly command-line tool with detailed explanations
+
+## Core Components
+
+### 1. Project Structure
+
+```
+options_trading_algo/
+├── requirements.txt
+├── README.md
+├── config.py                    # API keys and configuration
+├── src/
+│   ├── __init__.py
+│   ├── data/
+│   │   ├── __init__.py
+│   │   └── polygon_client.py    # Polygon.io API wrapper
+│   ├── indicators/
+│   │   ├── __init__.py
+│   │   └── technical.py         # Technical indicators (RSI, MACD, EMA, Volume)
+│   ├── strategies/
+│   │   ├── __init__.py
+│   │   ├── signal_generator.py  # Signal generation logic
+│   │   └── options_selector.py  # Options contract selection
+│   └── utils/
+│       ├── __init__.py
+│       └── helpers.py            # Helper functions
+└── main.py                       # CLI entry point
+```
+
+### 2. Technical Indicators (Starting Set)
+
+We'll implement **4 complementary indicators** that work well together:
+
+- **RSI (Relative Strength Index)**: Identifies overbought/oversold conditions (momentum)
+- **MACD (Moving Average Convergence Divergence)**: Trend direction and momentum shifts
+- **EMA (Exponential Moving Averages)**: 9, 21, 50-period for trend confirmation
+- **Volume Analysis**: Confirms strength of price movements
+
+**Why these work together:**
+
+- RSI identifies extreme conditions
+- MACD confirms trend changes
+- EMAs filter out false signals
+- Volume validates the move's strength
+
+### 3. Signal Generation Logic
+
+**Bullish Signals (Call Options):**
+
+- RSI crossing above 30 (oversold recovery)
+- MACD bullish crossover (signal line above MACD line)
+- Price above 21 EMA with 9 EMA crossing above 21 EMA
+- Volume > 20-day average volume
+
+**Bearish Signals (Put Options):**
+
+- RSI crossing below 70 (overbought reversal)
+- MACD bearish crossover
+- Price below 21 EMA with 9 EMA crossing below 21 EMA
+- Volume > 20-day average volume
+
+**Advanced Strategies:**
+
+- **Iron Condor**: Low volatility, price range-bound (RSI 40-60, low MACD)
+- **Straddle**: High volatility expected (upcoming earnings, RSI extremes with divergence)
+- **Bull/Bear Spreads**: Moderate conviction signals (2-3 indicators aligned)
+
+### 4. Options Contract Selection Criteria
+
+For optimal risk/reward, we'll score contracts based on:
+
+1. **Delta**: 0.4-0.7 for directional plays (balance risk/reward)
+2. **Liquidity**: Open interest > 100, bid-ask spread < 10%
+3. **Time to Expiration**: 2-6 weeks (sweet spot for theta decay)
+4. **Implied Volatility**: Compare to historical volatility (avoid overpaying)
+5. **Strike Price**: Based on signal strength and probability of profit
+
+**Scoring Formula:**
+
+```
+Contract Score = (Signal Strength × 0.4) + (Liquidity Score × 0.2) + 
+                 (IV Rank × 0.2) + (Delta Proximity × 0.2)
+```
+
+### 5. Implementation Details
+
+**polygon_client.py** will handle:
+
+- Rate limiting (5 API calls/minute for starter tier)
+- Caching to minimize API calls
+- Error handling and retries
+- Methods: `get_aggregates()`, `get_options_chain()`, `get_last_quote()`
+
+**technical.py** will calculate:
+
+- All indicators with detailed docstrings explaining the math
+- Signal strength scoring (0-100 scale)
+- Confluence detection (multiple indicators aligning)
+
+**signal_generator.py** will:
+
+- Combine indicator signals
+- Assign confidence levels (Strong: 80-100, Moderate: 60-79, Weak: < 60)
+- Recommend strategy type based on market conditions
+
+**options_selector.py** will:
+
+- Filter and rank available contracts
+- Calculate expected profit/loss scenarios
+- Provide top 3 recommendations with rationale
+
+**main.py** CLI will support:
+
+```bash
+# Analyze single ticker
+python main.py analyze AAPL
+
+# Analyze multiple tickers
+python main.py analyze AAPL TSLA NVDA --lookback 30
+
+# Show detailed indicator values
+python main.py analyze AAPL --verbose
+
+# Output JSON for further processing
+python main.py analyze AAPL --output json
+```
+
+### 6. Educational Features
+
+Each recommendation will include:
+
+- **Signal Breakdown**: Which indicators triggered and why
+- **Market Context**: Current trend, volatility state
+- **Risk Metrics**: Max loss, breakeven point, probability of profit
+- **Entry/Exit Plan**: Specific entry price, stop loss, profit targets
+- **Learning Notes**: Explanation of why this setup has edge
+
+### 7. Key Dependencies
+
+- `requests`: Polygon.io API calls
+- `pandas`: Data manipulation
+- `numpy`: Numerical calculations
+- `python-dotenv`: Environment variable management
+- `tabulate`: Beautiful CLI output tables
+
+## Risk Disclaimers
+
+The README will clearly state:
+
+- This is for educational purposes
+- Past performance doesn't guarantee future results
+- Always paper trade first
+- Risk only what you can afford to lose
+- Not financial advice
+
+## Next Steps After Initial Build
+
+- Add backtesting module
+- Implement position sizing recommendations
+- Add real-time monitoring mode
+- Create performance tracking database
